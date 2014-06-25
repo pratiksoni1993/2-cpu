@@ -1,0 +1,12 @@
+Directory structure :
+
+2 cpu --> llvm/
+
+Intrinsics.td --> llvm/include
+
+X86InstrFormats.td
+X86InstrArithmetic.td
+X86InstrInfo.td  --> llvm/lib/Target/X86
+
+tests 
+
