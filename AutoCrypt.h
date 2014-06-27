@@ -47,12 +47,12 @@ class AutoCrypt : public ModulePass, public InstVisitor<AutoCrypt> {
   
   /* A set of all variables that are sensitive and need to be encrypted */  
   std::set<std::string> encrypted_variables;
-
+  
+  std::map<std::string,char> test;
   /*Mapping of variables to their encrypted mode*/ 
   /* i for integer (default)*/
   /* b for bitwise*/
-  typedef std::map<std::string,char> typeof_encrypted_variables;
-  
+  std::map<std::string,char> t_encrypted_variables;
   
   /* A set of all global variables that are sensitive */
   std::set<std::string> global_variables;

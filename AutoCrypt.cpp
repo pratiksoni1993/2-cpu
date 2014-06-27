@@ -1348,9 +1348,10 @@ AutoCrypt:: isEncrypted(std::string varname)
   return (encrypted_variables.find(varname) != encrypted_variables.end());
 }
 
-char Autocrypt:: typeEncrypted(std::string varname)
+char AutoCrypt:: typeEncrypted(std::string varname)
 {
-  return typeof_encrypted_variables[varname];
+  char c = t_encrypted_variables[varname];
+  return c;
 }
 
 /* Inserts the variable in the encrypted variables list */
@@ -1360,19 +1361,20 @@ void AutoCrypt :: insertEncryptedVariable(std::string enc_var_name)
   if((*enc_var_name.rbegin()) != '_') 
     {
       encrypted_variables.insert(enc_var_name);
-      typeof_encrypted_variables.insert({enc_var_name,'i'});
+      t_encrypted_variables.insert(std::make_pair(enc_var_name, 'i'));
+    
       			
     }
 }
 
-void Autocrypt :: changeModeEncryptiontoBIT(std::string enc_var_name)
+void AutoCrypt :: changeModeEncryptiontoBIT(std::string enc_var_name)
 {
-   typeof_encrypted_variables[enc_var_name] = 'b';
+   t_encrypted_variables[enc_var_name] = 'b';
 }
 
-void Autocrypt :: changeModeEncryptiontoINT(std::string enc_var_name)
+void AutoCrypt :: changeModeEncryptiontoINT(std::string enc_var_name)
 {
-   typeof_encrypted_variables[enc_var_name] = 'i';
+   t_encrypted_variables[enc_var_name] = 'i';
 }
 
 /* Inserts a Call instrunction in the sensitive instructions list*/
