@@ -34,7 +34,10 @@ class AutoCrypt : public ModulePass, public InstVisitor<AutoCrypt> {
   static char ID;
 
   /* Data structures used in the pass */
-  
+  std::set<std::string> functions_called_declared;
+  std::set<std::string> functions_called_lib;
+  std::set<std::string> instructions_called;
+
   typedef  std::map<std::string, int> InnerMap;
   typedef  std::map<std::string, InnerMap> NestedMap;
   /* FunctionMap to save the mapping of visited functions and their arguments */
@@ -122,7 +125,7 @@ class AutoCrypt : public ModulePass, public InstVisitor<AutoCrypt> {
   /* Returns true if a variable is marked sensitive */
   // @varname --> Checks whether varname is presented in the encrypted list
   virtual bool isEncrypted(std::string varname);
- 
+  virtual void reportAnalysis();
  /*Returns encrypted mode if a variable is marked sensitive*/
   virtual char typeEncrypted(std::string varname);
 

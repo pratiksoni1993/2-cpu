@@ -2,6 +2,7 @@
 #include "AutoCrypt.h"
 
 using namespace std;
+int flag=0;
 
 char AutoCrypt::ID = 0;
 static RegisterPass<AutoCrypt> Y("cti", "AutoCrypt Type Inference Analysis Pass (with getAnalysisUsage implemented)", false, false);
@@ -26,11 +27,16 @@ bool AutoCrypt::runOnModule(Module &M)
 	  old_length = new_length;
 	}
     } while(!fixed_point);
-  int flag=0;
+  
   
   if(flag)
    Transform(&M);
+
+//print instructions_called, functions_called_lib, functions_called_declared
+  reportAnalysis();
+  errs() << "Done!!";
   return false;
+ 
 }
 
 
@@ -117,8 +123,12 @@ void AutoCrypt :: visitCallInst(CallInst &I)
     }
 
   // Check if the function is a library function or an internal function of the program
+  
   if((*F).isDeclaration())
     {
+
+      functions_called_lib.insert(F->getName());
+
       if(!isVisited(fname))
 	{
 	  functionMap[fname] = InnerMap();
@@ -150,6 +160,8 @@ void AutoCrypt :: visitCallInst(CallInst &I)
     }
   else 
     {
+
+      functions_called_declared.insert(F->getName());
       if(isVisited(fname))
 	{
 	  cnt = 1;
@@ -188,6 +200,7 @@ void AutoCrypt :: visitCallInst(CallInst &I)
 	    }                    
 	}
     }
+      
 }
     
 
@@ -441,10 +454,14 @@ AutoCrypt :: visitBinaryOperator(BinaryOperator &I)
     {
       op2_enc = true;
     }
-  
-  // ADD, XOR --> If any one of the operands is encrypted, the lhs is encrypted, 
+  //CHANGED!!!!
+
+
+  // OR,SUB,MUL,AND,ADD, XOR --> If any one of the operands is encrypted, the lhs is encrypted, 
   // also encrypt the other non-encrypted variable
-  if(I.getOpcode() == Instruction::Add || I.getOpcode() == Instruction::Xor) 
+
+  if(I.getOpcode() == Instruction::Add || I.getOpcode() == Instruction::Xor || I.getOpcode() == Instruction::Sub || I.getOpcode() == Instruction::And || 
+     I.getOpcode() == Instruction::Or || I.getOpcode() == Instruction::Mul) 
     {
       if(op1_enc || op2_enc) 
 	{
@@ -454,30 +471,28 @@ AutoCrypt :: visitBinaryOperator(BinaryOperator &I)
 	  ciphersize = 256;
 	  StubPointSet.insert(&I);
 	}
+
+     instructions_called.insert(I.getOpcodeName());
     }
 
-
-  //ADD FADD SUB FSUB MUL FMUL SDIV UDIV FDIV XOR AND SHL LSHR ASHR
-  // Cannot support instructions that work on floating point
-  //If only one of the operands is encrypted, result is encrypted
-  if(I.getOpcode() == Instruction::Add || I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::Sub || 
-     I.getOpcode() == Instruction::FSub || I.getOpcode() == Instruction::Mul || I.getOpcode() == Instruction::FMul ||
+  //Cannot support instructions block
+/*I.getOpcode() == Instruction::FAdd || I.getOpcode() == Instruction::FSub || I.getOpcode() == Instruction::FMul ||
      I.getOpcode() == Instruction::SDiv || I.getOpcode() == Instruction::UDiv || I.getOpcode() == Instruction::FDiv ||
-     I.getOpcode() == Instruction::Xor || I.getOpcode() == Instruction::And || I.getOpcode() == Instruction::Shl ||
-     I.getOpcode() == Instruction::LShr || I.getOpcode() == Instruction::AShr) 
+     I.getOpcode() == Instruction::Shl ||  I.getOpcode() == Instruction::LShr || I.getOpcode() == Instruction::AShr*/
+  else 
     {
       if(isEncrypted(get_enc_var(fname, op1)) || isEncrypted(get_enc_var(fname, op2))) 
 	{
-	  insertEncryptedVariable(get_enc_var(fname, lhs));
-	  enc_type = "paillier";
-	  ciphersize = 256;
-	  StubPointSet.insert(&I);
+	 errs()<<"Cannot Support "<< I.getOpcodeName() << "on encrypted data"<<'\n';
 	}
     }                                                                                      
 }
     
 // ICmp Instruction visitor function
 // This function gets called when the pass visits a Comparison instruction
+
+
+//to be changed here
 void
 AutoCrypt :: visitICmpInst(ICmpInst &I) 
 {
@@ -505,8 +520,9 @@ AutoCrypt :: visitICmpInst(ICmpInst &I)
 
       if(isEncrypted(get_enc_var(fname, op1)) || isEncrypted(get_enc_var(fname, op2))) 
 	{
-	  enc_type = "search";
-	  ciphersize = 20;
+          instructions_called.insert(I.getOpcodeName());
+          enc_type = "paillier";
+	  ciphersize = 256;
 	  StubPointSet.insert(&I);
 
 	  if(isEncrypted(get_enc_var(fname, op1)) && isEncrypted(get_enc_var(fname, op2))) 
@@ -532,6 +548,7 @@ AutoCrypt :: visitICmpInst(ICmpInst &I)
     default:
       break;
     }
+  
   return;
 }
 
@@ -545,11 +562,43 @@ AutoCrypt :: visitSwitchInst(SwitchInst &I)
 
   if(isEncrypted(get_enc_var(fname, op1))) 
     {
-      enc_type = "search";
-      ciphersize = 20;
+      enc_type = "paillier";
+      ciphersize = 256;
       StubPointSet.insert(&I);
+      instructions_called.insert(I.getOpcodeName());
     }
+
 }
+/***********************Analysis Report*****************************************/
+void AutoCrypt :: reportAnalysis()
+{
+  std::set<std::string>::iterator it;
+
+  errs() << "Instructions called : \n";
+  for(it=instructions_called.begin();it!=instructions_called.end();it++)
+   errs() << *it << '\n';
+
+  errs() << "\n\n\n";
+  
+  errs() << "Functions called from library : \n";
+  for(it=functions_called_lib.begin();it!=functions_called_lib.end();it++)
+   errs() << *it << '\n';
+  
+  errs() << "\n\n\n";
+  
+  errs() << "Functions declared in the file : \n";
+  for(it=functions_called_declared.begin();it!=functions_called_declared.end();it++)
+   errs() << *it << '\n';
+  
+  errs() << "\n\n\n";
+  
+}
+
+
+
+/*******************************************************************************/
+
+
 
 /********************END of Visit Instructions**********************************/
 
@@ -1529,7 +1578,13 @@ AutoCrypt :: createPaillierFunc( Value *op1, Value *op2, StringRef name, Instruc
 void 
 AutoCrypt :: fillFunctionMap() 
 {
+  
 
+
+  functionMap["__isoc99_scanf"]["return"] = 1;
+  functionMap["__isoc99_scanf"]["1"] = 0;
+  functionMap["__isoc99_scanf"]["2"] = 1;
+  functionMap["__isoc99_scanf"]["3"] = 1;
   //full_read
   functionMap["full_read"]["return"] = 0;
   functionMap["full_read"]["1"] = 0;//fd
@@ -1560,6 +1615,9 @@ AutoCrypt :: fillFunctionMap()
   //fgetc
   functionMap["fgetc_unlocked"]["return"] = 1;      
   functionMap["fgetc_unlocked"]["1"] = 0;//filestream
+
+  functionMap["fgetc"]["return"] = 1;      
+  functionMap["fgetc"]["1"] = 0;//filestream
 
   //fread
   functionMap["fread_unlocked"]["return"] = 0;      
