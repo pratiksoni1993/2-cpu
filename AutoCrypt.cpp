@@ -256,7 +256,7 @@ void
 AutoCrypt :: visitGetElementPtr(GetElementPtrInst &I)
 {     
 
-  const PointerType *PoTy = dyn_cast<PointerType>(I.getPointerOperandType()); // Pointer Type of the Operand
+  const PointerType *PoTy = dyn_cast<PointerType>(I.getPointerOperandType()); // Pointer Type of the Operan
   const Type *Ty = PoTy->getElementType();                                    // Element Type of the Operand
   std::string fname = (I).getParent()->getParent()->getName();                // Name of the parent function
   std::string lhs = I.getName();                                              // Name of the L.H.S variable
@@ -269,7 +269,8 @@ AutoCrypt :: visitGetElementPtr(GetElementPtrInst &I)
 	  const StructType *StTy = dyn_cast<StructType>(Ty);
 	  std::string strname = StTy->getName();
 	  Structmap[strname] = dyn_cast<ConstantInt>(I.getOperand(2));
-	  StubPointSet.insert(&I);
+         insertEncryptedVariable(get_enc_var(fname,I.getOperand(0)->getName()));
+        StubPointSet.insert(&I);
 	}
     }
   if (Ty->isStructTy())
@@ -591,7 +592,18 @@ void AutoCrypt :: reportAnalysis()
    errs() << *it << '\n';
   
   errs() << "\n\n\n";
+
+  errs() << "Encrypted Variables: \n";
+  for(it=encrypted_variables.begin();it!=encrypted_variables.end();it++)
+   errs() << *it << '\n';
   
+  errs() << "\n\n\n";
+
+  std::map<std::string, ConstantInt*>::iterator itmap;
+  errs() << "Structure map: \n";
+  for(itmap=Structmap.begin();itmap!=Structmap.end();itmap++)
+    errs() << itmap->first << '\t' << itmap->second << '\n';
+
 }
 
 
